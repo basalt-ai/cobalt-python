@@ -272,6 +272,33 @@ def clean(
 
 
 # ---------------------------------------------------------------------------
+# mcp
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def mcp() -> None:
+    """Start the Cobalt MCP server (stdio transport) for Claude / MCP clients.
+
+    Configure in Claude Desktop (~/Library/Application Support/Claude/claude_desktop_config.json):
+
+    \\b
+    {
+      "mcpServers": {
+        "cobalt": {
+          "command": "cobalt",
+          "args": ["mcp"],
+          "env": { "OPENAI_API_KEY": "sk-..." }
+        }
+      }
+    }
+    """
+    from cobalt.mcp.server import main as mcp_main
+
+    mcp_main()
+
+
+# ---------------------------------------------------------------------------
 # ui (dashboard)
 # ---------------------------------------------------------------------------
 

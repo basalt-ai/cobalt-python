@@ -22,6 +22,7 @@ This is the **Python** port. The original TypeScript SDK lives at [basalt-ai/cob
 - **Local dashboard** — `cobalt ui` spins up a web UI with score charts, item drill-down, and run comparison
 - **CI-ready** — declare score thresholds, get exit code 1 on regression
 - **Rich CLI** — `cobalt run`, `cobalt init`, `cobalt history`, `cobalt compare`, `cobalt ui`, `cobalt clean`
+- **MCP server** — `cobalt mcp` exposes 4 tools, 3 resources, 3 prompts to Claude and other MCP clients
 - **Full docs** — [docs/](docs/) matches TypeScript SDK structure and coverage
 
 ---
@@ -307,6 +308,8 @@ ruff check src/ tests/
 | History / compare | ✅ | ✅ |
 | SQLite storage | ✅ | ✅ |
 | CI thresholds | ✅ | ✅ |
+| Local dashboard | ✅ | ✅ (`cobalt ui`) |
+| MCP integration | ✅ | ✅ (`cobalt mcp`) |
 | Platform integrations | Langfuse, Langsmith, Braintrust, Basalt | ✅ same |
 
 Python conventions used throughout: `async/await`, `dataclasses`, `asyncio.Semaphore`, `typer`, `rich`.

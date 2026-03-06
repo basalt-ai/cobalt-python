@@ -19,6 +19,7 @@
 | [Evaluators](evaluators.md) | Score your agent's output |
 | [CI/CD Integration](ci-mode.md) | Gate deploys on quality thresholds |
 | [Configuration](configuration.md) | `cobalt.toml` full reference |
+| [MCP Integration](mcp.md) | Use Cobalt with Claude via Model Context Protocol |
 
 ## CLI Reference
 
@@ -113,6 +114,7 @@ Python feature parity with [basalt-ai/cobalt](https://github.com/basalt-ai/cobal
 | History & compare | ✅ | ✅ |
 | SQLite storage | ✅ | ✅ |
 | Local dashboard | ✅ | ✅ (`cobalt ui`) |
+| MCP integration | ✅ | ✅ (`cobalt mcp`) |
 | GitHub Actions | ✅ | ✅ |
 | Platform integrations | Langfuse / Langsmith / Braintrust / Basalt | ✅ same |
 
