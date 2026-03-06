@@ -6,6 +6,7 @@ import asyncio
 import glob
 import importlib.util
 import sys
+import webbrowser
 from pathlib import Path
 from typing import Optional
 
@@ -268,6 +269,44 @@ def clean(
         console.print(f"[green]Deleted:[/green] {_DB_PATH}")
 
     console.print("[bold green]✓ Cleaned.[/bold green]")
+
+
+# ---------------------------------------------------------------------------
+# ui (dashboard)
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def ui(
+    port: int = typer.Option(4000, "--port", "-p", help="Port to bind the dashboard server."),
+    no_open: bool = typer.Option(False, "--no-open", help="Don't automatically open browser."),
+    host: str = typer.Option("127.0.0.1", "--host", help="Host interface to bind."),
+) -> None:
+    """Start the local Cobalt dashboard at http://localhost:<port>."""
+    try:
+        import uvicorn
+    except ImportError:
+        console.print(
+            "[red]uvicorn not installed.[/red] Run: pip install 'cobalt-ai[dashboard]'"
+        )
+        raise typer.Exit(1)
+
+    from cobalt.dashboard.server import app as dashboard_app
+
+    url = f"http://{host}:{port}"
+    console.print(f"[bold green]✓ Cobalt Dashboard[/bold green] → [cyan]{url}[/cyan]")
+
+    if not no_open:
+        import threading
+        import time
+
+        def _open():
+            time.sleep(0.8)
+            webbrowser.open(url)
+
+        threading.Thread(target=_open, daemon=True).start()
+
+    uvicorn.run(dashboard_app, host=host, port=port, log_level="warning")
 
 
 def main() -> None:

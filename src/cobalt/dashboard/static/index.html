@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cobalt Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0f1117;
+      --bg2:    #181c25;
+      --bg3:    #1e2330;
+      --border: #2a3040;
+      --text:   #e2e8f0;
+      --muted:  #64748b;
+      --accent: #6366f1;
+      --green:  #22c55e;
+      --yellow: #eab308;
+      --red:    #ef4444;
+      --blue:   #38bdf8;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+    /* Layout */
+    .layout { display: flex; height: 100vh; }
+    .sidebar { width: 220px; min-width: 220px; background: var(--bg2); border-right: 1px solid var(--border); padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .main { flex: 1; overflow-y: auto; padding: 28px 32px; }
+
+    /* Sidebar */
+    .logo { font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 20px; padding-left: 6px; letter-spacing: -0.5px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--muted); transition: all 0.15s; font-size: 13px; font-weight: 500; }
+    .nav-item:hover, .nav-item.active { background: var(--bg3); color: var(--text); }
+    .nav-item.active { color: var(--accent); }
+    .nav-icon { font-size: 16px; width: 18px; text-align: center; }
+
+    /* Page sections */
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .page-sub { color: var(--muted); margin-bottom: 24px; font-size: 13px; }
+
+    /* Cards */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+    .card-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 8px; }
+    .card-value { font-size: 26px; font-weight: 700; }
+    .card-value.green { color: var(--green); }
+    .card-value.yellow { color: var(--yellow); }
+    .card-value.red { color: var(--red); }
+    .card-value.accent { color: var(--accent); }
+
+    /* Table */
+    .table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { background: var(--bg3); padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    tbody tr { border-top: 1px solid var(--border); transition: background 0.1s; cursor: pointer; }
+    tbody tr:hover { background: var(--bg3); }
+    td { padding: 11px 16px; color: var(--text); font-size: 13px; }
+    td.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: var(--muted); }
+    td .score-pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+
+    /* Score pill colours */
+    .pill-green  { background: rgba(34,197,94,.15);  color: var(--green); }
+    .pill-yellow { background: rgba(234,179,8,.15);  color: var(--yellow); }
+    .pill-red    { background: rgba(239,68,68,.15);  color: var(--red); }
+
+    /* Detail view */
+    .back-btn { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; margin-bottom: 20px; font-size: 13px; }
+    .back-btn:hover { color: var(--text); }
+
+    .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin: 24px 0 12px; }
+
+    .eval-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    .eval-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .eval-name { font-weight: 600; margin-bottom: 8px; }
+    .eval-stat { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .eval-avg { font-size: 22px; font-weight: 700; }
+
+    .chart-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 28px; max-height: 280px; }
+
+    /* Compare */
+    .compare-form { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 24px; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
+    .form-group label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    select, input[type=text] { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: var(--text); font-size: 13px; }
+    .btn { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .btn:hover { opacity: 0.9; }
+
+    .delta-pos { color: var(--green); font-weight: 600; }
+    .delta-neg { color: var(--red); font-weight: 600; }
+    .delta-neu { color: var(--muted); }
+
+    /* Loading / empty */
+    .loading { color: var(--muted); font-size: 13px; padding: 24px 0; }
+    .empty { color: var(--muted); font-size: 13px; padding: 32px 0; text-align: center; }
+
+    /* Tags */
+    .tag { display: inline-block; background: var(--bg3); border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 1px 7px; font-size: 11px; margin-right: 4px; }
+
+    /* Items list */
+    .item-row { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+    .item-row summary { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .item-row summary::-webkit-details-marker { display: none; }
+    .item-body { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; font-size: 12px; color: var(--muted); word-break: break-word; }
+    .kv { display: flex; gap: 8px; margin-bottom: 4px; }
+    .kv-key { color: var(--muted); min-width: 90px; }
+    .kv-val { color: var(--text); font-family: ui-monospace, monospace; }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .main { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">🧪 cobalt</div>
+    <div class="nav-item active" onclick="nav('runs')" id="nav-runs">
+      <span class="nav-icon">📊</span> Runs
+    </div>
+    <div class="nav-item" onclick="nav('compare')" id="nav-compare">
+      <span class="nav-icon">⚖️</span> Compare
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Runs page -->
+    <div class="page active" id="page-runs">
+      <div class="page-title">Experiment Runs</div>
+      <div class="page-sub">All stored experiment results</div>
+
+      <div class="cards" id="stats-cards">
+        <div class="card"><div class="card-label">Total Runs</div><div class="card-value accent" id="stat-total">—</div></div>
+        <div class="card"><div class="card-label">Experiments</div><div class="card-value accent" id="stat-experiments">—</div></div>
+        <div class="card"><div class="card-label">Latest Avg Score</div><div class="card-value" id="stat-latest-score">—</div></div>
+        <div class="card"><div class="card-label">Latest Items</div><div class="card-value" id="stat-latest-items">—</div></div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Run ID</th>
+              <th>Timestamp</th>
+              <th>Items</th>
+              <th>Duration</th>
+              <th>Scores</th>
+            </tr>
+          </thead>
+          <tbody id="runs-tbody">
+            <tr><td colspan="6" class="loading">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Detail page -->
+    <div class="page" id="page-detail">
+      <div class="back-btn" onclick="nav('runs')">← Back to Runs</div>
+      <div id="detail-content" class="loading">Loading…</div>
+    </div>
+
+    <!-- Compare page -->
+    <div class="page" id="page-compare">
+      <div class="page-title">Compare Runs</div>
+      <div class="page-sub">Side-by-side evaluator score comparison</div>
+
+      <div class="compare-form">
+        <div class="form-group">
+          <label>Run 1 ID</label>
+          <select id="cmp-run1"></select>
+        </div>
+        <div class="form-group">
+          <label>Run 2 ID</label>
+          <select id="cmp-run2"></select>
+        </div>
+        <button class="btn" onclick="doCompare()">Compare</button>
+      </div>
+
+      <div id="compare-result"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+let allRuns = [];
+let chartInstance = null;
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page)?.classList.add('active');
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function scorePill(v) {
+  if (v == null) return '<span class="muted">—</span>';
+  const cls = v >= 0.8 ? 'pill-green' : v >= 0.5 ? 'pill-yellow' : 'pill-red';
+  return `<span class="score-pill ${cls}">${(v * 100).toFixed(0)}%</span>`;
+}
+
+function scoreColor(v) {
+  if (v == null) return 'var(--muted)';
+  return v >= 0.8 ? 'var(--green)' : v >= 0.5 ? 'var(--yellow)' : 'var(--red)';
+}
+
+function fmtDuration(ms) {
+  if (ms < 1000) return ms.toFixed(0) + 'ms';
+  return (ms / 1000).toFixed(1) + 's';
+}
+
+function fmtTimestamp(ts) {
+  if (!ts) return '—';
+  try { return new Date(ts).toLocaleString(); } catch { return ts; }
+}
+
+function avgScores(scores) {
+  const vals = Object.values(scores || {}).map(s => s.avg).filter(v => v != null);
+  if (!vals.length) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+// ---------------------------------------------------------------------------
+// Runs list
+// ---------------------------------------------------------------------------
+async function loadRuns() {
+  try {
+    const res = await fetch('/api/runs?limit=200');
+    allRuns = await res.json();
+    renderRuns();
+    renderStats();
+    populateCompareSelects();
+  } catch (e) {
+    document.getElementById('runs-tbody').innerHTML = `<tr><td colspan="6" class="empty">Error loading runs: ${e.message}</td></tr>`;
+  }
+}
+
+function renderRuns() {
+  const tbody = document.getElementById('runs-tbody');
+  if (!allRuns.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No runs found. Run <code>cobalt run</code> to generate results.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allRuns.map(r => {
+    const avg = avgScores(r.avg_scores);
+    const scoreItems = Object.entries(r.avg_scores || {}).map(([k, v]) =>
+      `<span title="${k}">${scorePill(v)}</span>`
+    ).join(' ');
+    return `<tr onclick="showDetail('${r.id}')">
+      <td><strong>${escHtml(r.name)}</strong></td>
+      <td class="mono">${r.id}</td>
+      <td class="mono">${fmtTimestamp(r.timestamp)}</td>
+      <td>${r.total_items}</td>
+      <td>${fmtDuration(r.duration_ms)}</td>
+      <td>${scoreItems || '<span class="muted">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStats() {
+  document.getElementById('stat-total').textContent = allRuns.length;
+  const experiments = new Set(allRuns.map(r => r.name));
+  document.getElementById('stat-experiments').textContent = experiments.size;
+
+  const latest = allRuns[0];
+  if (latest) {
+    const avg = avgScores(latest.avg_scores);
+    const el = document.getElementById('stat-latest-score');
+    if (avg != null) {
+      el.textContent = (avg * 100).toFixed(1) + '%';
+      el.style.color = scoreColor(avg);
+    } else {
+      el.textContent = '—';
+    }
+    document.getElementById('stat-latest-items').textContent = latest.total_items;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Detail view
+// ---------------------------------------------------------------------------
+async function showDetail(runId) {
+  nav('detail');
+  const container = document.getElementById('detail-content');
+  container.innerHTML = '<p class="loading">Loading…</p>';
+
+  try {
+    const res = await fetch(`/api/runs/${runId}`);
+    if (!res.ok) throw new Error('Not found');
+    const report = await res.json();
+    renderDetail(report, container);
+  } catch (e) {
+    container.innerHTML = `<p class="empty">Error: ${e.message}</p>`;
+  }
+}
+
+function renderDetail(r, container) {
+  const tags = (r.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
+  const scores = r.summary?.scores || {};
+
+  // Evaluator cards
+  const evalCards = Object.entries(scores).map(([name, s]) => {
+    const color = scoreColor(s.avg);
+    return `<div class="eval-card">
+      <div class="eval-name">${escHtml(name)}</div>
+      <div class="eval-avg" style="color:${color}">${(s.avg * 100).toFixed(1)}%</div>
+      <div class="eval-stat"><span>min</span><span>${(s.min * 100).toFixed(0)}%</span></div>
+      <div class="eval-stat"><span>max</span><span>${(s.max * 100).toFixed(0)}%</span></div>
+      <div class="eval-stat"><span>p95</span><span>${(s.p95 * 100).toFixed(0)}%</span></div>
+    </div>`;
+  }).join('');
+
+  // Items
+  const items = (r.items || []).map(item => {
+    const evalBadges = Object.entries(item.evaluations || {}).map(([k, v]) =>
+      `${escHtml(k)}: ${scorePill(v.score)}`
+    ).join('  ');
+    const outputStr = typeof item.output?.output === 'string'
+      ? item.output.output.slice(0, 200)
+      : JSON.stringify(item.output?.output || '').slice(0, 200);
+    const errorBadge = item.error ? `<span style="color:var(--red);font-size:11px">⚠ ${escHtml(item.error)}</span>` : '';
+    return `<details class="item-row">
+      <summary>
+        <span><strong>#${item.index}</strong>&nbsp;&nbsp;<span class="mono" style="color:var(--muted)">${escHtml(JSON.stringify(item.input).slice(0, 60))}…</span></span>
+        <span style="display:flex;gap:8px;align-items:center">${evalBadges} ${errorBadge} <span style="color:var(--muted);font-size:11px">${fmtDuration(item.latency_ms)}</span></span>
+      </summary>
+      <div class="item-body">
+        <div class="kv"><span class="kv-key">Input</span><span class="kv-val">${escHtml(JSON.stringify(item.input))}</span></div>
+        <div class="kv"><span class="kv-key">Output</span><span class="kv-val">${escHtml(outputStr)}</span></div>
+        ${item.output?.metadata && Object.keys(item.output.metadata).length ? `<div class="kv"><span class="kv-key">Metadata</span><span class="kv-val">${escHtml(JSON.stringify(item.output.metadata))}</span></div>` : ''}
+        ${Object.entries(item.evaluations || {}).map(([k, v]) => v.reason ? `<div class="kv"><span class="kv-key">${escHtml(k)}</span><span class="kv-val">${escHtml(v.reason.slice(0, 200))}</span></div>` : '').join('')}
+      </div>
+    </details>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="page-title">${escHtml(r.name)}</div>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:4px">${fmtTimestamp(r.timestamp)} · ${r.id} · ${r.summary?.total_items || 0} items · ${fmtDuration(r.summary?.total_duration_ms || 0)}</div>
+    <div style="margin-bottom:20px">${tags}</div>
+
+    <div class="section-title">Evaluator Scores</div>
+    <div class="eval-grid">${evalCards || '<p class="empty">No evaluators ran.</p>'}</div>
+
+    ${Object.keys(scores).length ? `
+    <div class="section-title">Score Distribution</div>
+    <div class="chart-wrap"><canvas id="score-chart"></canvas></div>
+    ` : ''}
+
+    <div class="section-title">Items (${r.items?.length || 0})</div>
+    ${items || '<p class="empty">No items.</p>'}
+  `;
+
+  // Render chart after DOM update
+  if (Object.keys(scores).length) {
+    setTimeout(() => renderScoreChart(r), 50);
+  }
+}
+
+function renderScoreChart(r) {
+  const ctx = document.getElementById('score-chart');
+  if (!ctx) return;
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  const scores = r.summary?.scores || {};
+  const labels = Object.keys(scores);
+  const avgs = labels.map(k => +(scores[k].avg * 100).toFixed(1));
+  const p95s = labels.map(k => +(scores[k].p95 * 100).toFixed(1));
+  const mins = labels.map(k => +(scores[k].min * 100).toFixed(1));
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Avg', data: avgs, backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 4 },
+        { label: 'P95', data: p95s, backgroundColor: 'rgba(56,189,248,0.5)', borderRadius: 4 },
+        { label: 'Min', data: mins, backgroundColor: 'rgba(239,68,68,0.35)', borderRadius: 4 },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { labels: { color: '#94a3b8' } } },
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: '#1e2330' } },
+        y: { min: 0, max: 100, ticks: { color: '#64748b', callback: v => v + '%' }, grid: { color: '#1e2330' } }
+      }
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Compare
+// ---------------------------------------------------------------------------
+function populateCompareSelects() {
+  const makeOption = r => {
+    const el = document.createElement('option');
+    el.value = r.id;
+    el.textContent = `${r.name} — ${r.id} (${fmtTimestamp(r.timestamp).split(',')[0]})`;
+    return el;
+  };
+  const s1 = document.getElementById('cmp-run1');
+  const s2 = document.getElementById('cmp-run2');
+  [s1, s2].forEach(sel => {
+    sel.innerHTML = '';
+    allRuns.forEach(r => sel.appendChild(makeOption(r)));
+  });
+  // Default: compare last 2
+  if (allRuns.length >= 2) s2.selectedIndex = 1;
+}
+
+async function doCompare() {
+  const id1 = document.getElementById('cmp-run1').value;
+  const id2 = document.getElementById('cmp-run2').value;
+  const container = document.getElementById('compare-result');
+  if (!id1 || !id2) return;
+
+  container.innerHTML = '<p class="loading">Loading…</p>';
+  try {
+    const res = await fetch(`/api/compare?run_id_1=${id1}&run_id_2=${id2}`);
+    const data = await res.json();
+    renderCompare(data, container);
+  } catch (e) {
+    container.innerHTML = `<p class="empty">Error: ${e.message}</p>`;
+  }
+}
+
+function renderCompare(data, container) {
+  const r1 = data.run1;
+  const r2 = data.run2;
+  const rows = (data.comparison || []).map(c => {
+    const d = c.delta;
+    const deltaHtml = d == null ? '<span class="delta-neu">—</span>'
+      : d > 0 ? `<span class="delta-pos">+${(d * 100).toFixed(1)}%</span>`
+      : d < 0 ? `<span class="delta-neg">${(d * 100).toFixed(1)}%</span>`
+      : `<span class="delta-neu">0%</span>`;
+    return `<tr>
+      <td><strong>${escHtml(c.evaluator)}</strong></td>
+      <td>${c.run1 ? scorePill(c.run1.avg) : '—'}</td>
+      <td>${c.run2 ? scorePill(c.run2.avg) : '—'}</td>
+      <td>${deltaHtml}</td>
+      <td>${c.run1 ? (c.run1.p95 * 100).toFixed(0) + '%' : '—'}</td>
+      <td>${c.run2 ? (c.run2.p95 * 100).toFixed(0) + '%' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const durDelta = r2.summary.total_duration_ms - r1.summary.total_duration_ms;
+  const durColor = durDelta < 0 ? 'var(--green)' : durDelta > 0 ? 'var(--red)' : 'var(--muted)';
+
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+      <div class="card" onclick="showDetail('${r1.id}')" style="cursor:pointer">
+        <div class="card-label">Run 1</div>
+        <div style="font-weight:600">${escHtml(r1.name)}</div>
+        <div class="mono" style="font-size:11px;color:var(--muted)">${r1.id}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">${fmtTimestamp(r1.timestamp)} · ${r1.summary.total_items} items</div>
+      </div>
+      <div class="card" onclick="showDetail('${r2.id}')" style="cursor:pointer">
+        <div class="card-label">Run 2</div>
+        <div style="font-weight:600">${escHtml(r2.name)}</div>
+        <div class="mono" style="font-size:11px;color:var(--muted)">${r2.id}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">${fmtTimestamp(r2.timestamp)} · ${r2.summary.total_items} items</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Evaluator</th><th>Avg 1</th><th>Avg 2</th><th>Delta</th><th>P95 1</th><th>P95 2</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="6" class="empty">No evaluators to compare.</td></tr>'}</tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:16px;font-size:12px;color:var(--muted)">
+      Duration: ${fmtDuration(r1.summary.total_duration_ms)} → ${fmtDuration(r2.summary.total_duration_ms)}
+      <span style="color:${durColor}">&nbsp;(${durDelta >= 0 ? '+' : ''}${fmtDuration(Math.abs(durDelta))})</span>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Utility
+// ---------------------------------------------------------------------------
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+loadRuns();
+</script>
+</body>
+</html>

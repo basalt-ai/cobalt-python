@@ -19,8 +19,10 @@ This is the **Python** port. The original TypeScript SDK lives at [basalt-ai/cob
 - **Three evaluator types** — LLM-judge, custom function, semantic similarity
 - **Async-native runner** — configurable concurrency + per-item timeout
 - **SQLite history** — compare runs over time with `cobalt history` / `cobalt compare`
+- **Local dashboard** — `cobalt ui` spins up a web UI with score charts, item drill-down, and run comparison
 - **CI-ready** — declare score thresholds, get exit code 1 on regression
-- **Rich CLI** — `cobalt run`, `cobalt init`, `cobalt history`, `cobalt compare`, `cobalt clean`
+- **Rich CLI** — `cobalt run`, `cobalt init`, `cobalt history`, `cobalt compare`, `cobalt ui`, `cobalt clean`
+- **Full docs** — [docs/](docs/) matches TypeScript SDK structure and coverage
 
 ---
 
@@ -178,6 +180,20 @@ test_dir = "./experiments"
 
 ---
 
+## Dashboard
+
+```bash
+pip install 'cobalt-ai[dashboard]'
+cobalt ui
+# Opens http://localhost:4000
+```
+
+The local dashboard provides:
+- Run history with colour-coded score pills
+- Per-run score distribution chart (avg / p95 / min per evaluator)
+- Item-level drill-down — input, output, evaluator reasons
+- Side-by-side run comparison
+
 ## CLI
 
 ```bash
@@ -198,6 +214,9 @@ cobalt history --limit 20
 
 # Compare two runs
 cobalt compare <run-id-1> <run-id-2>
+
+# Local web dashboard
+cobalt ui --port 4000
 
 # Delete all stored results
 cobalt clean
