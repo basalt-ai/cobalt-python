@@ -130,13 +130,11 @@ async def experiment(
         items=results,
     )
 
-    # CI threshold validation
+    # CI threshold validation — attach to config so CI reporter can access
     if thresholds:
         ci = _validate_thresholds(report, thresholds)
-        report_dict = {  # attach informally; ExperimentReport has no ci_status field
-            "ci_status": ci,
-            **report.__dict__,
-        }
+        report.config["_ci_result"] = ci
+        report.config["_thresholds"] = thresholds
 
     # Persist
     try:

@@ -51,7 +51,7 @@ def run(
 
     console.print(f"[bold]Found {len(experiment_files)} experiment file(s)[/bold]")
 
-    any_violation = False
+    all_reports = []
 
     for exp_file in experiment_files:
         console.print(f"\n[cyan]Running:[/cyan] {exp_file}")
@@ -62,13 +62,29 @@ def run(
 
         module = importlib.util.module_from_spec(spec)
         try:
-            # Modules call experiment() — which is async — at import time via
-            # asyncio.run() wrappers or the module's __main__ block.
             spec.loader.exec_module(module)  # type: ignore[union-attr]
         except SystemExit:
             pass
         except Exception as exc:
             console.print(f"[red]Error in {exp_file}: {exc}[/red]")
+            continue
+
+        # If the module has a main() coroutine that wasn't auto-called,
+        # run it now and collect the report.
+        main_fn = getattr(module, "main", None)
+        if main_fn is not None and asyncio.iscoroutinefunction(main_fn):
+            try:
+                report = asyncio.run(main_fn())
+                if report is not None:
+                    all_reports.append(report)
+            except Exception as exc:
+                console.print(f"[red]Error running {exp_file}: {exc}[/red]")
+
+    # CI threshold validation
+    any_violation = False
+    if ci:
+        from cobalt.ci import validate_and_report
+        any_violation = validate_and_report(all_reports)
 
     if ci and any_violation:
         raise typer.Exit(1)
