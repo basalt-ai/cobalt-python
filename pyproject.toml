@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "basalt-ai-cobalt"
-version = "0.2.0"
+version = "0.2.1"
 description = "Unit testing for AI Agents — Python port of Cobalt"
 readme = "README.md"
 license = {text = "MIT"}

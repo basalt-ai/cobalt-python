@@ -32,7 +32,10 @@ def validate_and_report(reports: list[ExperimentReport]) -> bool:
         status = "🔴" if any_violation else "🟢"
         body = f"## {status} Cobalt Experiment Results\n\n" + "\n\n---\n\n".join(all_sections)
         body += "\n\n<!-- cobalt_eval_comment -->"
-        _post_github_comment(body)
+        try:
+            _post_github_comment(body)
+        except Exception as exc:
+            print(f"[cobalt] Warning: failed to post GitHub comment: {exc}")
 
     return any_violation
 
@@ -138,13 +141,11 @@ def _post_github_comment(body: str) -> None:
     """Post or update a PR comment using the gh CLI."""
     event_path = os.environ.get("GITHUB_EVENT_PATH")
     if not event_path:
+        print("[cobalt] No GITHUB_EVENT_PATH set, skipping PR comment")
         return
 
-    try:
-        with open(event_path) as f:
-            event = json.load(f)
-    except Exception:
-        return
+    with open(event_path) as f:
+        event = json.load(f)
 
     pr_number = None
     if "pull_request" in event:
@@ -153,46 +154,40 @@ def _post_github_comment(body: str) -> None:
         pr_number = event["number"]
 
     if pr_number is None:
+        print("[cobalt] Could not determine PR number from event, skipping comment")
         return
 
     repo = os.environ.get("GITHUB_REPOSITORY", "")
     marker = "<!-- cobalt_eval_comment -->"
+    print(f"[cobalt] Posting comment to {repo}#{pr_number}")
 
     # Try to find existing comment to update
-    try:
-        result = subprocess.run(
-            ["gh", "api", f"repos/{repo}/issues/{pr_number}/comments", "--jq", ".[].id"],
+    result = subprocess.run(
+        ["gh", "api", f"repos/{repo}/issues/{pr_number}/comments",
+         "--jq", f'[.[] | select(.body | contains("{marker}")) | .id] | first'],
+        capture_output=True, text=True, timeout=30,
+    )
+    existing_id = result.stdout.strip() if result.returncode == 0 else ""
+
+    if existing_id and existing_id != "null":
+        # Update existing comment
+        print(f"[cobalt] Updating existing comment {existing_id}")
+        r = subprocess.run(
+            ["gh", "api", "--method", "PATCH",
+             f"repos/{repo}/issues/comments/{existing_id}",
+             "-f", f"body={body}"],
             capture_output=True, text=True, timeout=30,
         )
-        if result.returncode == 0:
-            # Check each comment for our marker
-            comment_ids = result.stdout.strip().split("\n")
-            for cid in comment_ids:
-                if not cid.strip():
-                    continue
-                check = subprocess.run(
-                    ["gh", "api", f"repos/{repo}/issues/comments/{cid.strip()}", "--jq", ".body"],
-                    capture_output=True, text=True, timeout=30,
-                )
-                if check.returncode == 0 and marker in check.stdout:
-                    # Update existing comment
-                    subprocess.run(
-                        ["gh", "api", "--method", "PATCH",
-                         f"repos/{repo}/issues/comments/{cid.strip()}",
-                         "-f", f"body={body}"],
-                        capture_output=True, timeout=30,
-                    )
-                    return
-    except Exception:
-        pass
-
-    # Create new comment
-    try:
-        subprocess.run(
+        if r.returncode != 0:
+            print(f"[cobalt] Failed to update comment: {r.stderr}")
+    else:
+        # Create new comment
+        print("[cobalt] Creating new comment")
+        r = subprocess.run(
             ["gh", "api", "--method", "POST",
              f"repos/{repo}/issues/{pr_number}/comments",
              "-f", f"body={body}"],
-            capture_output=True, timeout=30,
+            capture_output=True, text=True, timeout=30,
         )
-    except Exception:
-        pass
+        if r.returncode != 0:
+            print(f"[cobalt] Failed to create comment: {r.stderr}")
