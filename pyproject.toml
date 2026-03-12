@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cobalt-ai"
+name = "basalt-ai-cobalt"
 version = "0.1.0"
 description = "Unit testing for AI Agents — Python port of Cobalt"
 readme = "README.md"
