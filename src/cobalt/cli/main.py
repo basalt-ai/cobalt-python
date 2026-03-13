@@ -6,6 +6,7 @@ import asyncio
 import glob
 import importlib.util
 import sys
+import warnings
 import webbrowser
 from pathlib import Path
 from typing import Optional
@@ -50,6 +51,12 @@ def run(
         raise typer.Exit(0)
 
     console.print(f"[bold]Found {len(experiment_files)} experiment file(s)[/bold]")
+
+    # Suppress noisy ResourceWarnings (unclosed sockets/transports) from user
+    # code and third-party libraries — these clutter CI output without being
+    # actionable by the experiment author.
+    warnings.filterwarnings("ignore", category=ResourceWarning)
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
 
     all_reports = []
 
